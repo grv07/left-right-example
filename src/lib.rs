@@ -1,5 +1,10 @@
+use slab::Slab;
+use std::sync::Arc;
 
-type Epochs = Arc<Slab<usize>>;
+mod reader;
+mod writer;
+
+pub type Epochs = Arc<Slab<usize>>;
 
 #[cfg(test)]
 mod tests {
