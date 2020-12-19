@@ -6,7 +6,7 @@ use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-struct WriteHandle<T> {
+pub struct WriteHandle<T> {
     w_handle: NonNull<T>,
     epochs: crate::Epochs,
     r_handle: ReadHandle<T>,
