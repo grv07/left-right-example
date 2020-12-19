@@ -1,10 +1,11 @@
 use slab::Slab;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicUsize;
 
-mod reader;
-mod writer;
+mod read;
+mod write;
 
-pub type Epochs = Arc<Slab<usize>>;
+pub type Epochs = Arc<Mutex<Slab<Arc<AtomicUsize>>>>;
 
 #[cfg(test)]
 mod tests {
