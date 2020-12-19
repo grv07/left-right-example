@@ -1,6 +1,6 @@
 use slab::Slab;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Mutex};
 
 mod read;
 mod write;

@@ -1,11 +1,12 @@
 use std::sync::atomic::{AtomicPtr, AtomicUsize};
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct ReadHandle<T> {
     pub epochs: crate::Epochs,
     pub epoch: Arc<AtomicUsize>,
     pub inner: Arc<AtomicPtr<T>>,
-    pub epoch_i: usize
+    pub epoch_i: usize,
 }
 
 impl<T> Clone for ReadHandle<T> {
@@ -30,7 +31,7 @@ impl<T> ReadHandle<T> {
             epochs: epochs,
             inner: inner,
             epoch: epoch,
-            epoch_i: epoch_i
+            epoch_i: epoch_i,
         }
     }
 }
