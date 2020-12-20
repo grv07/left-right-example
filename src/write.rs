@@ -1,7 +1,10 @@
 extern crate slab;
+
+use crate::operation::Operation;
 use crate::read::ReadHandle;
 use slab::Slab;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -10,6 +13,7 @@ pub struct WriteHandle<T> {
     w_handle: NonNull<T>,
     epochs: crate::Epochs,
     r_handle: ReadHandle<T>,
+    oplog: VecDeque<Operation<String, String>>,
 }
 
 impl<T> WriteHandle<T> {
@@ -18,7 +22,12 @@ impl<T> WriteHandle<T> {
             w_handle: w_handle,
             epochs: epochs,
             r_handle: r_handle,
+            oplog: VecDeque::new(),
         }
+    }
+
+    fn add_operation(&mut self, op: Operation<String, String>) {
+        self.oplog.push_front(op);
     }
 
     pub fn publish(&mut self) {

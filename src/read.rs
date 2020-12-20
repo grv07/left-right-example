@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::sync::atomic::{AtomicPtr, AtomicUsize};
 use std::sync::Arc;
 
@@ -7,7 +8,7 @@ pub struct ReadHandle<T> {
     pub epoch: Arc<AtomicUsize>,
     pub inner: Arc<AtomicPtr<T>>,
     pub epoch_i: usize,
-    enters: Cell<usize>
+    enters: Cell<usize>,
 }
 
 impl<T> Clone for ReadHandle<T> {
@@ -33,13 +34,11 @@ impl<T> ReadHandle<T> {
             inner: inner,
             epoch: epoch,
             epoch_i: epoch_i,
-            enter: Cell::new(0),
+            enters: Cell::new(0),
         }
     }
 }
 
-
 impl<T> ReadHandle<T> {
-    fn enter() {
-    }
+    fn enter() {}
 }
