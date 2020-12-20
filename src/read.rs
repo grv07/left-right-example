@@ -7,6 +7,7 @@ pub struct ReadHandle<T> {
     pub epoch: Arc<AtomicUsize>,
     pub inner: Arc<AtomicPtr<T>>,
     pub epoch_i: usize,
+    enters: Cell<usize>
 }
 
 impl<T> Clone for ReadHandle<T> {
@@ -24,7 +25,7 @@ impl<T> ReadHandle<T> {
         Self::new_with_arc(inner, epochs)
     }
 
-    fn new_with_arc(inner: Arc<AtomicPtr<T>>, epochs: crate::Epochs) -> Self {
+    pub fn new_with_arc(inner: Arc<AtomicPtr<T>>, epochs: crate::Epochs) -> Self {
         let epoch = Arc::new(AtomicUsize::new(0));
         let epoch_i = epochs.lock().unwrap().insert(Arc::clone(&epoch));
         Self {
@@ -32,6 +33,13 @@ impl<T> ReadHandle<T> {
             inner: inner,
             epoch: epoch,
             epoch_i: epoch_i,
+            enter: Cell::new(0),
         }
+    }
+}
+
+
+impl<T> ReadHandle<T> {
+    fn enter() {
     }
 }
