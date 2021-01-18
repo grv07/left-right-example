@@ -64,11 +64,11 @@ impl<T> ReadHandle<T> {
     pub fn enter(&self) {
         let enters = self.enters.get();
         if enters != 0 {
-            self.enters.set(enters+1);
+            self.enters.set(enters + 1);
             return;
         }
         self.epoch.fetch_add(1, Ordering::SeqCst);
-        self.enters.set(enters+1);
+        self.enters.set(enters + 1);
 
         todo!("Implements enter for read")
     }
