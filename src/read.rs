@@ -3,6 +3,8 @@ use std::fmt::{Debug, Formatter, Result};
 use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use std::sync::Arc;
 
+mod read;
+
 pub struct ReadHandle<T> {
     // maintain the list if all epochs used by all of the readers.
     epochs: crate::Epochs,
