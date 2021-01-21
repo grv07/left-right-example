@@ -42,9 +42,22 @@ impl<T, O> WriteHandle<T, O> where T: Absorb<O> {
         }
     }
 
-    fn wait(epochs: crate::Epochs) {
-        let pre_epochs = ;
+    fn wait(&mut self, epochs: &MutexGuard<'_, Slab<Arc<AtomicUsize>>>) {
+        self.pre_epochs.resize(epochs.capacity(), 0);
+        let istart = 0;
+        let iter = 0;
 
+        'retry:loop {
+            for (i, (ek, epoch)) in epochs.iter().skip(istart).enumerate() {
+                if epoch % 2 == 0{
+                    continue;
+                }
+                let now = epoch.get(ek).unwrap();
+                if now != self.pre_epochs[ek] {
+                      
+                }
+            }
+        }
     }
     
     fn publish(&mut self) -> &mut Self { 
@@ -53,7 +66,7 @@ impl<T, O> WriteHandle<T, O> where T: Absorb<O> {
 
         let cap = epochs.capacity();
         let pre_epoch = Vec::<usize>::with_capacity(cap);
-        Self::wait(); 
+        self.wait(&mut epochs); 
         
         if !self.first {
 
