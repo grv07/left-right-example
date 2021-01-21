@@ -1,68 +1,64 @@
-extern crate slab;
-
-use crate::operation::Operation;
-use crate::read::ReadHandle;
-use slab::Slab;
-use std::collections::HashMap;
-use std::collections::VecDeque;
-use std::ptr::NonNull;
+use std::fmt;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use crate::read::ReadHandle;
+use std::ptr::NonNull;
 
-pub struct WriteHandle<T> {
-    w_handle: NonNull<T>,
+pub struct WriteHandle<T> { 
     epochs: crate::Epochs,
-    r_handle: ReadHandle<T>,
-    oplog: VecDeque<Operation<String, String>>,
+    pre_epochs: Vec<usize>,
+    r_handler: ReadHandle<T>,
+    w_handle: NonNull<T>,
+    first: bool,
+    secound: bool,
+}
+
+impl<T> fmt::Debug for WriteHandle<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WriteHandle")
+            .field("epochs", &self.epochs)
+            .field("pre_epochs", &self.pre_epochs)
+            .finish()
+    }
 }
 
 impl<T> WriteHandle<T> {
-    pub fn new(w_handle: NonNull<T>, r_handle: ReadHandle<T>, epochs: crate::Epochs) -> Self {
+    pub fn new(epochs: crate::Epochs, r_handler: ReadHandle<T>, w_handle: T) -> Self {
+        let w_handle = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(w_handle)))};
         Self {
-            w_handle: w_handle,
-            epochs: epochs,
-            r_handle: r_handle,
-            oplog: VecDeque::new(),
+            epochs,
+            r_handler,
+            w_handle,
+            pre_epochs: Vec::new(),
+            first: true,
+            secound: true,
+            swap_index: usize,
         }
     }
 
-    fn add_operation(&mut self, op: Operation<String, String>) {
-        self.oplog.push_front(op);
+    fn wait() {}
+    
+    fn publish(&mut self) -> &mut Self { 
+        let epochs = Arc::clone(&self.epochs);
+        let mut epochs = epochs.lock().unwrap(); 
+
+        let cap = epochs.capacity();
+        let pre_epoch = Vec::<usize>::with_capacity(cap);
+        Self::wait(); 
+        
+        if !self.first {
+                    
+        }
+        else{
+        
+        }
+        self.first = false;
+
+        let new_r_handle = self.r_handler.inner.swap(self.w_handle.as_ptr(), Ordering::Relaxed);
+        self.w_handle = unsafe {NonNull::new_unchecked(new_r_handle)};
+        for (ri, epoch) in epochs.iter() {
+            self.pre_epochs[ri] = epoch.load(Ordering::Relaxed);
+        }
+       self 
     }
-
-    pub fn publish(&mut self) {
-        let r_handle = unsafe {
-            self.r_handle
-                .inner
-                .swap(self.w_handle.as_mut(), Ordering::Acquire)
-        };
-        self.w_handle = NonNull::new(r_handle).unwrap();
-    }
-}
-
-#[test]
-fn test_crate_write_handle() {
-    let mut m1 = Box::new(HashMap::new());
-    m1.insert("w", "1");
-    let mut m2 = HashMap::new();
-    m2.insert("r", "1");
-
-    let w_handle = NonNull::new(Box::into_raw(m1)).unwrap();
-    let mut slab = Slab::new();
-    slab.insert(Arc::new(AtomicUsize::new(0)));
-    let epochs = Arc::new(Mutex::new(slab));
-
-    let r_handle = ReadHandle::new(m2, Arc::clone(&epochs));
-
-    let mut wh = WriteHandle::new(w_handle, r_handle, epochs);
-    wh.publish();
-
-    let w_map = unsafe { &wh.w_handle.as_ref() };
-    assert_eq!(w_map.contains_key("r"), true);
-
-    let r_map = wh.r_handle.inner.load(Ordering::Acquire);
-    let r_map = NonNull::new(r_map).unwrap();
-    let r_map = unsafe { r_map.as_ref() };
-
-    assert_eq!(r_map.contains_key("w"), true);
 }

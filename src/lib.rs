@@ -2,9 +2,9 @@ use slab::Slab;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 
-mod factory;
-mod operation;
 mod read;
+pub use crate::read::ReadHandle;
+
 mod write;
 
 pub type Epochs = Arc<Mutex<Slab<Arc<AtomicUsize>>>>;
