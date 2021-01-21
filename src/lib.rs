@@ -9,6 +9,12 @@ mod write;
 
 pub type Epochs = Arc<Mutex<Slab<Arc<AtomicUsize>>>>;
 
+trait Absorb<O> {
+     fn absorb_first(&mut self, op: &mut O, other: &Self);
+
+     fn absorb_second(&mut self, op: O, other: &Self);
+} 
+
 #[cfg(test)]
 mod tests {
     #[test]

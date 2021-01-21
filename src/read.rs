@@ -3,6 +3,8 @@ use std::fmt::{Debug, Formatter, Result};
 use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use std::sync::Arc;
 
+use std::ptr::NonNull;
+
 mod factory;
 mod read;
 
@@ -80,5 +82,11 @@ impl<T> ReadHandle<T> {
 
     pub fn was_dropped(&self) -> bool {
         self.inner.load(Ordering::Relaxed).is_null()
+    }
+
+    pub fn raw_handle(&self) -> Option<NonNull<T>> {
+        let inner_clone = Arc::clone(&self.inner);
+        let inner = inner_clone.load(Ordering::Relaxed);
+        NonNull::new(inner)
     }
 }
