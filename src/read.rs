@@ -9,7 +9,7 @@ mod factory;
 mod read;
 
 use factory::ReadHandleFactory;
-
+use read::ReadGuard;
 pub struct ReadHandle<T> {
     // maintain the list if all epochs used by all of the readers.
     epochs: crate::Epochs,
@@ -67,17 +67,29 @@ impl<T> ReadHandle<T> {
     }
 }
 
-impl<T> ReadHandle<T> {
-    pub fn enter(&self) {
+impl<'a, T> ReadHandle<T> {
+    pub fn enter(&'a self) -> ReadGuard<'a, T> {
         let enters = self.enters.get();
         if enters != 0 {
             self.enters.set(enters + 1);
-            return;
+            
+        let inner_raw_handle = unsafe {self.raw_handle().as_ref().unwrap().as_ref()};
+            ReadGuard {
+                t: inner_raw_handle,
+                enters: &self.enters,
+                epoch: &self.epoch,
+            };
         }
         self.epoch.fetch_add(1, Ordering::SeqCst);
         self.enters.set(enters + 1);
-
-        todo!("Implements enter for read")
+        
+        
+        let inner_raw_handle = unsafe {self.raw_handle().unwrap().as_ref()};
+        ReadGuard {
+            t: inner_raw_handle,
+            enters: &self.enters,
+            epoch: &self.epoch
+        }
     }
 
     pub fn was_dropped(&self) -> bool {

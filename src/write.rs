@@ -1,13 +1,14 @@
-use std::fmt;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::read::ReadHandle;
-use std::ptr::NonNull;
+use slab::Slab;
 use std::collections::VecDeque;
+use std::fmt;
+use std::ptr::NonNull;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, MutexGuard};
 
 use super::Absorb;
 
-pub struct WriteHandle<T, O> { 
+pub struct WriteHandle<T, O> {
     epochs: crate::Epochs,
     pre_epochs: Vec<usize>,
     oplog: VecDeque<O>,
@@ -27,9 +28,12 @@ impl<T, O> fmt::Debug for WriteHandle<T, O> {
     }
 }
 
-impl<T, O> WriteHandle<T, O> where T: Absorb<O> {
+impl<T, O> WriteHandle<T, O>
+where
+    T: Absorb<O>,
+{
     pub fn new(epochs: crate::Epochs, r_handler: ReadHandle<T>, w_handle: T) -> Self {
-        let w_handle = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(w_handle)))};
+        let w_handle = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(w_handle))) };
         Self {
             epochs,
             r_handler,
@@ -43,59 +47,68 @@ impl<T, O> WriteHandle<T, O> where T: Absorb<O> {
     }
 
     fn wait(&mut self, epochs: &MutexGuard<'_, Slab<Arc<AtomicUsize>>>) {
-        self.pre_epochs.resize(epochs.capacity(), 0);
-        let istart = 0;
-        let iter = 0;
+        let mut istart = 0;
+        let mut iter = 0;
 
-        'retry:loop {
-            for (i, (ek, epoch)) in epochs.iter().skip(istart).enumerate() {
-                if epoch % 2 == 0{
+        self.pre_epochs.resize(epochs.capacity(), 0);
+
+        'retry: loop {
+            for (i, (k, epoch)) in epochs.iter().skip(istart).enumerate() {
+                let epoch = epoch.clone().load(Ordering::Relaxed);
+                if epoch % 2usize == 0 {
                     continue;
                 }
-                let now = epoch.get(ek).unwrap();
-                if now != self.pre_epochs[ek] {
-                      
+                if epoch != self.pre_epochs[k] {
+                    continue;
+                } else {
+                    istart = i;
+                    if iter != 20 {
+                        iter += 1;
+                        continue;
+                    } else {
+                        std::thread::yield_now();
+                    }
+                    continue 'retry;
                 }
             }
+            break;
         }
     }
-    
-    fn publish(&mut self) -> &mut Self { 
+
+    fn publish(&mut self) -> &mut Self {
         let epochs = Arc::clone(&self.epochs);
-        let mut epochs = epochs.lock().unwrap(); 
+        let mut epochs = epochs.lock().unwrap();
 
         let cap = epochs.capacity();
         let pre_epoch = Vec::<usize>::with_capacity(cap);
-        self.wait(&mut epochs); 
-        
-        if !self.first {
+        self.wait(&mut epochs);
 
+        if !self.first {
             let raw_read_ds = self.r_handler.raw_handle().unwrap();
-            let raw_read_ds = unsafe {raw_read_ds.as_ref()};
-            let raw_write_ds = unsafe {self.w_handle.as_mut()};
-            if self.secound {
-                    
-            }
+            let raw_read_ds = unsafe { raw_read_ds.as_ref() };
+            let raw_write_ds = unsafe { self.w_handle.as_mut() };
+            if self.secound {}
             if self.swap_index != 0 {
-               for op in self.oplog.drain(..self.swap_index) {
-                    T::absorb_second(raw_write_ds, op, raw_read_ds); 
-               } 
+                for op in self.oplog.drain(..self.swap_index) {
+                    T::absorb_second(raw_write_ds, op, raw_read_ds);
+                }
             }
             for op in self.oplog.iter_mut() {
-               T::absorb_first(raw_write_ds, op, raw_read_ds); 
+                T::absorb_first(raw_write_ds, op, raw_read_ds);
             }
             self.swap_index = self.oplog.len();
-        }
-        else {
-            
+        } else {
         }
         self.first = false;
 
-        let new_r_handle = self.r_handler.inner.swap(self.w_handle.as_ptr(), Ordering::Relaxed);
-        self.w_handle = unsafe {NonNull::new_unchecked(new_r_handle)};
+        let new_r_handle = self
+            .r_handler
+            .inner
+            .swap(self.w_handle.as_ptr(), Ordering::Relaxed);
+        self.w_handle = unsafe { NonNull::new_unchecked(new_r_handle) };
         for (ri, epoch) in epochs.iter() {
             self.pre_epochs[ri] = epoch.load(Ordering::Relaxed);
         }
-       self 
+        self
     }
 }
