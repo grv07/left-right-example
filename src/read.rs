@@ -72,8 +72,8 @@ impl<'a, T> ReadHandle<T> {
         let enters = self.enters.get();
         if enters != 0 {
             self.enters.set(enters + 1);
-            
-        let inner_raw_handle = unsafe {self.raw_handle().as_ref().unwrap().as_ref()};
+
+            let inner_raw_handle = unsafe { self.raw_handle().as_ref().unwrap().as_ref() };
             ReadGuard {
                 t: inner_raw_handle,
                 enters: &self.enters,
@@ -82,13 +82,12 @@ impl<'a, T> ReadHandle<T> {
         }
         self.epoch.fetch_add(1, Ordering::SeqCst);
         self.enters.set(enters + 1);
-        
-        
-        let inner_raw_handle = unsafe {self.raw_handle().unwrap().as_ref()};
+
+        let inner_raw_handle = unsafe { self.raw_handle().unwrap().as_ref() };
         ReadGuard {
             t: inner_raw_handle,
             enters: &self.enters,
-            epoch: &self.epoch
+            epoch: &self.epoch,
         }
     }
 
